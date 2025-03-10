@@ -2,6 +2,7 @@ import requests
 import time
 import random
 import smtplib
+import os  # Import os to access environment variables
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from datetime import datetime, timedelta
@@ -18,12 +19,17 @@ HEADERS = {
     "X-Requested-With": "XMLHttpRequest"
 }
 
-# 🚀 Email Credentials (Use Gmail SMTP)
-SMTP_SERVER = "smtp.gmail.com"  # Gmail SMTP server
+# 🚀 Get credentials from environment variables
+SMTP_SERVER = "smtp.gmail.com"
 SMTP_PORT = 587
-EMAIL_SENDER = "zeelapatel2754@gmail.com"  # Replace with your Gmail
-EMAIL_PASSWORD = "lbki sjfa sklq neqa"  # Use App Password if 2FA is enabled
-EMAIL_RECIPIENT = "zeelpatel2754@gmail.com"  # Email to receive notifications
+EMAIL_SENDER = os.getenv("EMAIL_SENDER")  # Your Gmail
+EMAIL_PASSWORD = os.getenv("EMAIL_PASSWORD")  # App Password
+EMAIL_RECIPIENT = os.getenv("EMAIL_RECIPIENT")  # Recipient Email
+SESSION_COOKIE = os.getenv("SESSION_COOKIE")  # Session Cookie
+
+if not all([EMAIL_SENDER, EMAIL_PASSWORD, EMAIL_RECIPIENT, SESSION_COOKIE]):
+    print("❌ Missing environment variables. Please set EMAIL_SENDER, EMAIL_PASSWORD, EMAIL_RECIPIENT, SESSION_COOKIE.")
+    exit(1)  # Exit if required variables are not set
 
 def send_email(subject, message):
     """Sends an email notification via Gmail SMTP."""
@@ -52,9 +58,9 @@ def get_date_range():
     future_date = (datetime.today() + timedelta(days=14)).strftime("%Y-%m-%d")
     return today, future_date
 
-def check_shifts(session_cookie):
+def check_shifts():
     """Fetch available shifts with random delays to avoid bot detection."""
-    SESSION_COOKIES = {"ls_info": session_cookie}  # Store cookie
+    SESSION_COOKIES = {"ls_info": SESSION_COOKIE}  # Store cookie
 
     while True:
         from_date, to_date = get_date_range()
@@ -77,12 +83,9 @@ def check_shifts(session_cookie):
                 shift_data = response.json()
                 print("✅ Shift Data:", shift_data)
                 current_shift_count = len(shift_data["data"]["rows"])
+                
+                # 🚀 Send email only when new shifts appear
                 if current_shift_count > 0:
-                    subject = "🚨 Open Shift Available!"
-                    message = f"New open shifts found: {shift_data['data']['rows']}"
-                    send_email(subject, message)
-                # 🚀 If open shifts are found, send an email notification
-                if shift_data["success"] and shift_data["data"]["rows"]:
                     subject = "🚨 Open Shift Available!"
                     message = f"New open shifts found: {shift_data['data']['rows']}"
                     send_email(subject, message)
@@ -93,28 +96,10 @@ def check_shifts(session_cookie):
             print(f"❌ Failed to fetch shifts! HTTP Status: {response.status_code}")
 
         # 🚀 Random Delay to Avoid Detection
-        wait_time = random.randint(180, 300)  # Random delay between 4 to 6 minutes
+        wait_time = random.randint(240, 360)  # Random delay between 4 to 6 minutes
         print(f"⏳ Waiting {wait_time // 60} minutes before next check...\n")
         time.sleep(wait_time)
 
-# 🚀 Ask user to input session cookie before starting
-session_cookie = input("🔑 Paste your session cookie (ls_info) here: ").strip()
-if session_cookie:
-    print("✅ Cookie saved! Starting shift checker...\n")
-    check_shifts(session_cookie)
-else:
-    print("❌ No cookie provided. Exiting program.")
-
-
 if __name__ == "__main__":
-    import os
-    os.system("cls" if os.name == "nt" else "clear")  # Clears terminal for better visibility
     print("🚀 Shift Checker is starting...")
-    
-    session_cookie = input("🔑 Paste your session cookie (ls_info) here: ").strip()
-    if session_cookie:
-        print("✅ Cookie saved! Starting shift checker...\n")
-        check_shifts(session_cookie)
-    else:
-        print("❌ No cookie provided. Exiting program.")
-        input("Press Enter to exit...")  # Keeps the window open if no cookie is provided
+    check_shifts()
